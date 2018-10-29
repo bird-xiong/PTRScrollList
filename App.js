@@ -7,7 +7,7 @@
  */
 import React, {Component} from 'react';
 import {Platform, StyleSheet, Text, View, Dimensions} from 'react-native';
-import PTRScrollList from "./ScrollList/PTRScrollList.ios";
+import PTRScrollList from "./ScrollList/PTRScrollList";
 const {width, height} = Dimensions.get('window');//屏幕宽度
 export default class App extends Component {
   constructor(props) {
