@@ -102,25 +102,17 @@ class HeaderRefresh extends Component {
   _currentOffset = 0;
   constructor(props) {
     super(props);
-    this._top = props.contentInset ? props.contentInset.top : 0;
+    this._top = 0;
     props.getInstance instanceof Function && props.getInstance(this);
   }
 
   shouldComponentUpdate(nextProps, nextState) {
     return false;
   }
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.contentInset && nextProps.contentInset.top !== this._top) {
-      this._top = nextProps.contentInset.top;
-      this._wrapRef.setNativeProps({ style: { top: this._top } });
-    }
-  }
   //通过ref向子组件传数据，避免整个scroll被渲染
   setRefreshStatus(status, offset) {
     let currentStatus = this._gestureStatus;
-    //刷新复位只更新状态
-    if (status === G_STATUS_NONE && this._gestureStatus === G_STATUS_HEADER_REFRESHING) {
-    } else if (status === G_STATUS_HEADER_REFRESHING && this._gestureStatus !== status) {
+    if (status === G_STATUS_HEADER_REFRESHING && this._gestureStatus !== status) {
       this._lottieInstance.hc_startLoading && this._lottieInstance.hc_startLoading();
     } else if (status === G_STATUS_PULLING_DOWN || status === G_STATUS_RELEASE_TO_REFRESH) {
       if (offset >= 0) {
@@ -138,11 +130,10 @@ class HeaderRefresh extends Component {
     if (status === G_STATUS_HEADER_REFRESHING && currentStatus === G_STATUS_HEADER_REFRESHING) {
       translateY = -offset;
     }
-    console.log("_currentOffsetY", offset,status,currentStatus);
     if (status === G_STATUS_PULLING_DOWN || status === G_STATUS_NONE) {
       opacity = Math.min(offset, 10) / 10;
     }
-    this._wrapRef.setNativeProps({ style: { top: translateY } });
+    this._wrapRef.setNativeProps({ style: { top: translateY, opacity } });
   }
 
   render() {
@@ -155,7 +146,7 @@ class HeaderRefresh extends Component {
           {
             // transform: [{ translateY: -G_PULL_DOWN_DISTANCE }],
             top: -G_PULL_DOWN_DISTANCE,
-            // opacity: 0
+            opacity: 0
           }
         ]}
       >
@@ -171,8 +162,8 @@ export default class PTRScrollList extends Component {
   _currentContentSizeHeight = 0;
   _footerMoreData = true;
   _ptrHeight = 1;
-  _originContentInset = null;
   _panResponder = null;
+  _paddingTop =0;
   static propTypes = {
     scrollComponent: PropTypes.oneOf(["ScrollView", "ListView", "FlatList", "VirtualizedList"]).isRequired,
     getRef: PropTypes.func,
@@ -195,9 +186,7 @@ export default class PTRScrollList extends Component {
       enableFooterInfinite: false || props.enableFooterInfinite,
       enableHeaderRefresh: props.enableHeaderRefresh == undefined ? true : props.enableHeaderRefresh,
       footerStatus: G_STATUS_FOOTER_NONE,
-      contentInset: props.contentInset ? props.contentInset : { top: 0, right: 0, bottom: 0, left: 0 }
     };
-    this._originContentInset = props.contentInset ? props.contentInset : this.state.contentInset;
     props.getInstance instanceof Function && props.getInstance(this);
   }
   componentWillMount() {
@@ -205,66 +194,34 @@ export default class PTRScrollList extends Component {
       onMoveShouldSetPanResponderCapture: this.onMoveShouldSetPanResponderCapture,
       onPanResponderMove: this.onPanResponderMove,
       onPanResponderEnd: this.onPanResponderEnd,
-      onStartShouldSetPanResponderCapture: this.onStartShouldSetPanResponderCapture,
-      onShouldBlockNativeResponder: this.onShouldBlockNativeResponder,
-      onPanResponderTerminate: this.onPanResponderTerminate,
-      onPanResponderTerminationRequest: this.onPanResponderTerminationRequest
     });
   }
   componentWillReceiveProps(nextProps) {
     if (nextProps.enableHeaderRefresh !== undefined) this.state.enableHeaderRefresh = nextProps.enableHeaderRefresh;
-
     if (nextProps.enableFooterInfinite !== undefined) this.state.enableFooterInfinite = nextProps.enableFooterInfinite;
-
-    if (nextProps.contentInset) {
-      this.state.contentInset = { ...nextProps.contentInset, top: this.state.contentInset.top - this._originContentInset.top + nextProps.contentInset.top };
-      this._originContentInset = nextProps.contentInset;
-    }
   }
 
-  onStartShouldSetPanResponderCapture = (evt, gestureState) => {
-    console.log("onStartShouldSetPanResponderCapture", gestureState.dy);
-    return false;
-  };
-  onShouldBlockNativeResponder = (evt, gestureState) => {
-    // let { dy, vy } = gestureState;
-    console.log("onShouldBlockNativeResponder", gestureState);
-    return true;
-  };
-
-  /** 通过该事件来判断是都需要继续执行后续的手势事件
-   * 返回 true 则会执行手势事件并且会阻止点击事件
-   * 返回 false 则会阻止手势事件 从而正常执行 点击事件
-   */
   onMoveShouldSetPanResponderCapture = (evt, gestureState) => {
     let { dy, vy } = gestureState;
-    console.log("onMoveShouldSetPanResponderCapture", gestureState.dy);
-    return this.state.gestureStatus !== G_STATUS_HEADER_REFRESHING;
-  };
-
-  onPanResponderTerminate = (evt, gestureState) => {
-    console.log("onPanResponderTerminate", gestureState.dy);
-  };
-
-  onPanResponderTerminationRequest = (evt, gestureState) => {
-    console.log("onPanResponderTerminationRequest", gestureState.dy);
+    let result = this.state.gestureStatus !== G_STATUS_HEADER_REFRESHING && gestureState.vy > 0 && this._currentOffsetY == 0;
+    this._scrollInstance.setNativeProps({scrollEnabled: !result})
+    return result;
   };
 
   // 开始拖拽
   onPanResponderMove = (evt, gestureState) => {
     let { dy, vy } = gestureState;
-    console.log("onPanResponderMove", gestureState.dy);
-    this._currentOffsetY = dy;
     let { enableHeaderRefresh, gestureStatus } = this.state;
     if (enableHeaderRefresh) {
-      let y = this._currentOffsetY - this._originContentInset.top;
-      if (gestureStatus !== G_STATUS_HEADER_REFRESHING && gestureStatus !== G_STATUS_RELEASE_TO_REFRESH) {
+      let y = dy
+      if (gestureStatus !== G_STATUS_HEADER_REFRESHING) {
         if (y >= G_PULL_DOWN_DISTANCE) this._setGestureStatus(G_STATUS_RELEASE_TO_REFRESH);
         else this._setGestureStatus(G_STATUS_PULLING_DOWN);
       }
       if (gestureStatus !== G_STATUS_HEADER_REFRESHING) {
         this._scrollInstance.setNativeProps({ style: { paddingTop: y } });
         this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, y);
+        this._paddingTop = y
       }
     }
   };
@@ -272,40 +229,60 @@ export default class PTRScrollList extends Component {
   // 拖拽结束 onPanResponderEnd
   onPanResponderEnd = (evt, gestureState) => {
     let { dy, vy } = gestureState;
-    console.log("onPanResponderEnd", gestureState.dy);
     let { enableHeaderRefresh } = this.state;
     let { gestureStatus, footerStatus } = this.state;
     let y = dy;
     if (enableHeaderRefresh) {
-      y = y - this._originContentInset.top;
-      if (gestureStatus !== G_STATUS_HEADER_REFRESHING && footerStatus === G_STATUS_FOOTER_NONE) {
-        if (y >= G_PULL_DOWN_DISTANCE) {
+      y = y 
+      if (gestureStatus !== G_STATUS_HEADER_REFRESHING && y >=0) {
+        let duration = 200
+        let paddingTop = this._paddingTop
+        if (y >= G_PULL_DOWN_DISTANCE && footerStatus === G_STATUS_FOOTER_NONE) {
           this._setGestureStatus(G_STATUS_HEADER_REFRESHING);
           this._scrollInstance.setNativeProps({ style: { paddingTop: G_PULL_DOWN_DISTANCE } });
           this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, G_PULL_DOWN_DISTANCE);
-        } else {
+          duration = Math.min((y - G_PULL_DOWN_DISTANCE) / G_PULL_DOWN_DISTANCE * duration, duration)
+          paddingTop = G_PULL_DOWN_DISTANCE
+        } 
+        else if ( (vy > 0.4 || (vy > 0 && /e/g.test(String(vy))) ) && footerStatus === G_STATUS_FOOTER_NONE){
+          this._setGestureStatus(G_STATUS_HEADER_REFRESHING);
+          this._scrollInstance.setNativeProps({ style: { paddingTop: G_PULL_DOWN_DISTANCE } });
+          this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, G_PULL_DOWN_DISTANCE);
+          duration = Math.min((G_PULL_DOWN_DISTANCE - paddingTop) / G_PULL_DOWN_DISTANCE * duration, duration)
+          paddingTop = G_PULL_DOWN_DISTANCE
+        }
+        else{
           this._scrollInstance.setNativeProps({ style: { paddingTop: 0 } });
           this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, 0);
+          duration = Math.min(y / G_PULL_DOWN_DISTANCE * duration, duration)
+          paddingTop = 0
+        }
+        if (this._paddingTop !== paddingTop){
+          LayoutAnimation.configureNext({
+            duration,
+            update: {
+              type: LayoutAnimation.Types.easeInEaseOut
+            }
+          });
+          this._paddingTop = paddingTop
         }
       }
     }
-    this.props.onScrollEndDrag && this.props.onScrollEndDrag(e);
   };
 
   // 动画刷新完成初始化位置
   _headerRefreshDone = (animated = true) => {
     this._setGestureStatus(G_STATUS_NONE);
     this._headerRefreshInstance.setRefreshStatus(G_STATUS_NONE, 0);
-    this.setState({
-      contentInset: this._originContentInset
-    });
     this._scrollInstance.setNativeProps({ style: { paddingTop: 0 } });
-    this._currentOffsetY < 0 && this._scrollToPos(-this._originContentInset.top, animated);
+    this._footerRef && this._footerRef.setNativeProps({style:{paddingBottom: 0}})
+    this._paddingTop = 0
+    this._currentOffsetY < 0 && this._scrollToPos(0, animated);
     this._footerMoreData = true;
     this._updateFooterVisible();
 
     LayoutAnimation.configureNext({
-      duration: 600,
+      duration: 200,
       update: {
         type: LayoutAnimation.Types.easeInEaseOut
       }
@@ -327,6 +304,7 @@ export default class PTRScrollList extends Component {
     this.state.gestureStatus = status;
     if (status === G_STATUS_HEADER_REFRESHING) {
       this.props.onHeaderRefreshing && this.props.onHeaderRefreshing();
+      this._footerRef && this._footerRef.setNativeProps({style:{paddingBottom: G_PULL_DOWN_DISTANCE}})
     }
   };
 
@@ -347,39 +325,22 @@ export default class PTRScrollList extends Component {
    * 页面滚动函数，根据页面的滚动 距离，执行相对应的方法
    */
   onScroll = e => {
-    let { contentOffset, contentInset } = e.nativeEvent;
+    let { contentOffset } = e.nativeEvent;
     this._currentOffsetY = contentOffset.y;
     let { enableHeaderRefresh, gestureStatus } = this.state;
     if (enableHeaderRefresh) {
-      let y = this._currentOffsetY - this._originContentInset.top;
+      let y = this._currentOffsetY
       if (gestureStatus === G_STATUS_HEADER_REFRESHING) {
         this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, y);
       }
     }
   };
 
-  // 拖拽结束
-  onScrollEndDrag = e => {
-    // let { enableHeaderRefresh } = this.state;
-    // let { gestureStatus, footerStatus } = this.state;
-    // let { contentOffset, contentInset } = e.nativeEvent;
-    // let y = contentOffset.y;
-    // if (this.state.enableHeaderRefresh) {
-    //   y = y * -1 - this._originContentInset.top;
-    //   if (gestureStatus !== G_STATUS_HEADER_REFRESHING && footerStatus === G_STATUS_FOOTER_NONE) {
-    //     if (y >= G_PULL_DOWN_DISTANCE) {
-    //       this._setGestureStatus(G_STATUS_HEADER_REFRESHING);
-    //       this._scrollToPos(-G_PULL_DOWN_DISTANCE - this._originContentInset.top, true);
-    //       this.setState({
-    //         contentInset: {
-    //           ...this._originContentInset,
-    //           top: this._originContentInset.top + G_PULL_DOWN_DISTANCE
-    //         }
-    //       });
-    //     }
-    //   }
-    //   this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, y);
-    // }
+  onScrollBeginDrag = e => {
+    this.onEndReachedCalledDuringMomentum = false;
+    this.props.onScrollBeginDrag && this.props.onScrollBeginDrag(e);
+  };
+  onScrollEndDrag= e => {
     this.props.onScrollEndDrag && this.props.onScrollEndDrag(e);
   };
   onContentSizeChange = (w, h) => {
@@ -396,9 +357,11 @@ export default class PTRScrollList extends Component {
   onEndReachedCalledDuringMomentum = true;
   // 视图滚动开始
   onMomentumScrollBegin = e => {
-    this.onEndReachedCalledDuringMomentum = false;
     this.props.onMomentumScrollBegin && this.props.onMomentumScrollBegin(e);
   };
+  onMomentumScrollEnd = e => {
+    this.props.onMomentumScrollEnd && this.props.onMomentumScrollEnd(e);
+  }
   onEndReached = () => {
     if (!this.onEndReachedCalledDuringMomentum) {
       let { enableFooterInfinite, gestureStatus } = this.state;
@@ -414,7 +377,7 @@ export default class PTRScrollList extends Component {
   _renderFooterInfinite = () => {
     let Footer = this.props.renderFooterInfinite ? this.props.renderFooterInfinite : FooterComponent;
     return (
-      <View ref={ref => (this._footerRef = ref)} style={[Styles.endLoadMore, { display: this._footerVisible() ? "flex" : "none" }]}>
+      <View ref={ref =>this._footerRef = ref} style={[Styles.endLoadMore, { display: this._footerVisible() ? "flex" : "none" }]}>
         <Footer />
       </View>
     );
@@ -452,7 +415,6 @@ export default class PTRScrollList extends Component {
         {enableHeaderRefresh ? (
           <HeaderRefresh
             getInstance={ins => (this._headerRefreshInstance = ins)}
-            contentInset={this.props.contentInset}
             ptrScrollFinished={this._headerRefreshDone}
             renderHeaderRefresh={this.props.renderHeaderRefresh}
           />
@@ -470,13 +432,12 @@ export default class PTRScrollList extends Component {
           onScroll={this.onScroll}
           onLayout={this.onLayout}
           onContentSizeChange={this.onContentSizeChange}
-          contentInset={this.state.contentInset}
+          onScrollBeginDrag={this.onScrollBeginDrag}
           onScrollEndDrag={this.onScrollEndDrag}
           onMomentumScrollBegin={this.onMomentumScrollBegin}
           onMomentumScrollEnd={this.onMomentumScrollEnd}
           onEndReachedThreshold={0.01}
           ListFooterComponent={enableFooterInfinite ? this._renderFooterInfinite() : null}
-          automaticallyAdjustContentInsets={false}
           onEndReached={this.onEndReached}
         />
       </View>

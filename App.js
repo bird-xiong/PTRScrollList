@@ -6,7 +6,7 @@
  * @flow
  */
 import React, {Component} from 'react';
-import {Platform, StyleSheet, Text, View, Dimensions} from 'react-native';
+import {Platform, StyleSheet, Text, View, Dimensions, NativeModules} from 'react-native';
 import PTRScrollList from "./ScrollList/PTRScrollList";
 const {width, height} = Dimensions.get('window');//屏幕宽度
 export default class App extends Component {
@@ -50,7 +50,7 @@ export default class App extends Component {
       return d
   }
   _renderRower = (item, index) => {
-    return <Text key={index} style={{color: 'black', backgroundColor:'transparent',width, height: 60}}>{item}</Text>;
+    return <Text onPress={()=>index==1&&NativeModules.DevHelper&&NativeModules.DevHelper.reload()} key={index} style={{color: 'black', backgroundColor:'transparent',width, height: 60}}>{item}</Text>;
   };
   _keyExtractor = (item, index) => index.toString();
   render() {

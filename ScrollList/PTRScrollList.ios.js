@@ -300,9 +300,13 @@ export default class PTRScrollList extends Component {
   onEndReachedCalledDuringMomentum = true;
   // 视图滚动开始
   onMomentumScrollBegin = e => {
-    this.onEndReachedCalledDuringMomentum = false;
+    // this.onEndReachedCalledDuringMomentum = false;
     this.props.onMomentumScrollBegin && this.props.onMomentumScrollBegin(e);
   };
+  onScrollBeginDrag = e => {
+    this.onEndReachedCalledDuringMomentum = false;
+    this.props.onScrollBeginDrag && this.props.onScrollBeginDrag(e);
+  }
   onEndReached = () => {
     if (!this.onEndReachedCalledDuringMomentum) {
       let { enableFooterInfinite, gestureStatus } = this.state;
@@ -376,6 +380,7 @@ export default class PTRScrollList extends Component {
             onLayout: this.onLayout,
             onContentSizeChange: this.onContentSizeChange,
             contentInset: this.state.contentInset,
+            onScrollBeginDrag:this.onScrollBeginDrag,
             onScrollEndDrag: this.onScrollEndDrag,
             onMomentumScrollBegin: this.onMomentumScrollBegin,
             onMomentumScrollEnd: this.onMomentumScrollEnd,
