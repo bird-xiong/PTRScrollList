@@ -206,9 +206,12 @@ export default class PTRScrollList extends Component {
   _headerRefreshDone = (animated = true) => {
     this._setGestureStatus(G_STATUS_NONE);
     this._headerRefreshInstance.setRefreshStatus(G_STATUS_NONE, -this._originContentInset.top);
-    this.setState({
-      contentInset: this._originContentInset
-    });
+    //delay setState for animated perform
+    setTimeout(() => {
+      this.setState({
+        contentInset: this._originContentInset
+      });
+    },0);
     this._currentOffsetY < 0 && this._scrollToPos(-this._originContentInset.top, animated);
     this._footerMoreData = true;
     this._updateFooterVisible();
@@ -274,12 +277,14 @@ export default class PTRScrollList extends Component {
         if (y >= G_PULL_DOWN_DISTANCE) {
           this._setGestureStatus(G_STATUS_HEADER_REFRESHING);
           this._scrollToPos(-G_PULL_DOWN_DISTANCE - this._originContentInset.top, true);
-          this.setState({
-            contentInset: {
-              ...this._originContentInset,
-              top: this._originContentInset.top + G_PULL_DOWN_DISTANCE
-            }
-          });
+          setTimeout(() => {
+            this.setState({
+              contentInset: {
+                ...this._originContentInset,
+                top: this._originContentInset.top + G_PULL_DOWN_DISTANCE
+              }
+            });
+          }, 0);
         }
       }
       this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, y);
