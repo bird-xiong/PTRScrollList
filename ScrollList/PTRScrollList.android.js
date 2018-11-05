@@ -411,7 +411,7 @@ export default class PTRScrollList extends Component {
         break;
     }
     return (
-      <View style={Styles.wrap} {...this._panResponder.panHandlers}>
+      <View style={Styles.wrap} {...this._panResponder.panHandlers} collapsable={false}>
         {enableHeaderRefresh ? (
           <HeaderRefresh
             getInstance={ins => (this._headerRefreshInstance = ins)}
