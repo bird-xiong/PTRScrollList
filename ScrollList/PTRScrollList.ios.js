@@ -218,10 +218,12 @@ export default class PTRScrollList extends Component {
   };
   // 刷新结束
   ptr_headerRefreshFinished = (animated = true) => {
+    if (this.state.gestureStatus !== G_STATUS_HEADER_REFRESHING) return
     if (animated == false) this._headerRefreshDone(animated);
     else this._headerRefreshInstance._lottieInstance.hc_refreshFinished && this._headerRefreshInstance._lottieInstance.hc_refreshFinished();
   };
   ptr_footerRefershFinished = moreData => {
+    if (this.state.footerStatus !== G_STATUS_FOOTER_REFRESHING) return
     this.state.footerStatus = G_STATUS_FOOTER_NONE;
     this._footerMoreData = moreData || false;
     this._updateFooterVisible();

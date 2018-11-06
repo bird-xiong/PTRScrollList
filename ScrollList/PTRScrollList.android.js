@@ -156,6 +156,24 @@ class HeaderRefresh extends Component {
   }
 }
 
+function customLayoutAnimationConfig (duration){
+  return {
+    duration,
+    create:{
+      property: LayoutAnimation.Properties.opacity,
+      type: LayoutAnimation.Types.easeInEaseOut
+    },
+    update: {
+      // property: LayoutAnimation.Properties.opacity,
+      type: LayoutAnimation.Types.easeInEaseOut
+    },
+    delete:{
+      property: LayoutAnimation.Properties.opacity,
+      type: LayoutAnimation.Types.easeInEaseOut
+    }
+  }
+}
+
 export default class PTRScrollList extends Component {
   _headerRefreshInstance = null; //刷新头实例
   _currentOffsetY = 0;
@@ -163,7 +181,6 @@ export default class PTRScrollList extends Component {
   _footerMoreData = true;
   _ptrHeight = 1;
   _panResponder = null;
-  _paddingTop =0;
   static propTypes = {
     scrollComponent: PropTypes.oneOf(["ScrollView", "ListView", "FlatList", "VirtualizedList"]).isRequired,
     getRef: PropTypes.func,
@@ -221,7 +238,6 @@ export default class PTRScrollList extends Component {
       if (gestureStatus !== G_STATUS_HEADER_REFRESHING) {
         this._scrollInstance.setNativeProps({ style: { paddingTop: y } });
         this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, y);
-        this._paddingTop = y
       }
     }
   };
@@ -233,38 +249,25 @@ export default class PTRScrollList extends Component {
     let { gestureStatus, footerStatus } = this.state;
     let y = dy;
     if (enableHeaderRefresh) {
-      y = y 
       if (gestureStatus !== G_STATUS_HEADER_REFRESHING && y >=0) {
         let duration = 200
-        let paddingTop = this._paddingTop
+        LayoutAnimation.configureNext(customLayoutAnimationConfig(duration));
         if (y >= G_PULL_DOWN_DISTANCE && footerStatus === G_STATUS_FOOTER_NONE) {
           this._setGestureStatus(G_STATUS_HEADER_REFRESHING);
           this._scrollInstance.setNativeProps({ style: { paddingTop: G_PULL_DOWN_DISTANCE } });
           this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, G_PULL_DOWN_DISTANCE);
           duration = Math.min((y - G_PULL_DOWN_DISTANCE) / G_PULL_DOWN_DISTANCE * duration, duration)
-          paddingTop = G_PULL_DOWN_DISTANCE
         } 
         else if ( (vy > 0.4 || (vy > 0 && /e/g.test(String(vy))) ) && footerStatus === G_STATUS_FOOTER_NONE){
           this._setGestureStatus(G_STATUS_HEADER_REFRESHING);
           this._scrollInstance.setNativeProps({ style: { paddingTop: G_PULL_DOWN_DISTANCE } });
           this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, G_PULL_DOWN_DISTANCE);
-          duration = Math.min((G_PULL_DOWN_DISTANCE - paddingTop) / G_PULL_DOWN_DISTANCE * duration, duration)
-          paddingTop = G_PULL_DOWN_DISTANCE
+          duration = Math.min((G_PULL_DOWN_DISTANCE - y) / G_PULL_DOWN_DISTANCE * duration, duration)
         }
         else{
           this._scrollInstance.setNativeProps({ style: { paddingTop: 0 } });
           this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, 0);
           duration = Math.min(y / G_PULL_DOWN_DISTANCE * duration, duration)
-          paddingTop = 0
-        }
-        if (this._paddingTop !== paddingTop){
-          LayoutAnimation.configureNext({
-            duration,
-            update: {
-              type: LayoutAnimation.Types.easeInEaseOut
-            }
-          });
-          this._paddingTop = paddingTop
         }
       }
     }
@@ -272,28 +275,23 @@ export default class PTRScrollList extends Component {
 
   // 动画刷新完成初始化位置
   _headerRefreshDone = (animated = true) => {
+    LayoutAnimation.configureNext(customLayoutAnimationConfig(200));
     this._setGestureStatus(G_STATUS_NONE);
     this._headerRefreshInstance.setRefreshStatus(G_STATUS_NONE, 0);
     this._scrollInstance.setNativeProps({ style: { paddingTop: 0 } });
     this._footerRef && this._footerRef.setNativeProps({style:{paddingBottom: 0}})
-    this._paddingTop = 0
     this._currentOffsetY < 0 && this._scrollToPos(0, animated);
     this._footerMoreData = true;
     this._updateFooterVisible();
-
-    LayoutAnimation.configureNext({
-      duration: 200,
-      update: {
-        type: LayoutAnimation.Types.easeInEaseOut
-      }
-    });
   };
   // 刷新结束
   ptr_headerRefreshFinished = (animated = true) => {
+    if (this.state.gestureStatus !== G_STATUS_HEADER_REFRESHING) return
     if (animated == false) this._headerRefreshDone(animated);
     else this._headerRefreshInstance._lottieInstance.hc_refreshFinished && this._headerRefreshInstance._lottieInstance.hc_refreshFinished();
   };
   ptr_footerRefershFinished = moreData => {
+    if (this.state.footerStatus !== G_STATUS_FOOTER_REFRESHING) return
     this.state.footerStatus = G_STATUS_FOOTER_NONE;
     this._footerMoreData = moreData || false;
     this._updateFooterVisible();
