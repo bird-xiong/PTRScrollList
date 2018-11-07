@@ -85,6 +85,9 @@
 >```hc_updateStatus = status => {...};```
 >##### *在列表状态变化的时候被调用，status为刷新状态*
 
+>```hc_resetStatus = () => {...};```
+>##### *刷新失败或者重置整个组件时被调用，这时候应该停止当前所有的动画并还原响应的状态*
+
 当你的动画执行完成后，需要告诉 PTRScrolList
 
 ```this.props.ptrScrollFinished && this.props.ptrScrollFinished();```

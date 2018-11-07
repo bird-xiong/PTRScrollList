@@ -25,15 +25,22 @@ class HeaderComponent extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      toFinished: false,
       progress: new Animated.Value(0),
       waitTimer: null,
-      continuousRefresh: true,
       text: "下拉刷新"
     };
   }
   hc_refreshFinished = () => {
-    this.state.toFinished = true;
+    this.setState({
+      text: "刷新成功"
+    });
+    this._loop  && this._loop.stop()
+    this._loop = null
+    this.state.waitTimer = setTimeout(() => {
+      this.props.ptrScrollFinished && this.props.ptrScrollFinished();
+      clearInterval(this.state.waitTimer);
+      this.state.waitTimer = null;
+    }, 600);
   };
   hc_startLoading = () => {
     this.infiniteLoading();
@@ -48,39 +55,34 @@ class HeaderComponent extends Component {
     else text = "正在刷新";
     this.setState({ text });
   };
+  hc_resetStatus = () => {
+    this.state.progress.stopAnimation(()=>{
+      this.state.progress.setValue(0);
+      if (this.state.waitTimer){
+        clearInterval(this.state.waitTimer);
+        this.state.waitTimer = null;
+      }
+    })
+  }
+  componentWillUnmount(){
+    if (this.state.waitTimer){
+      clearInterval(this.state.waitTimer);
+      this.state.waitTimer = null;
+    }
+  }
   shouldComponentUpdate(nextProps, nextState) {
-    return nextState.text !== this.state.text
+    return nextState.text !== this.state.text;
   }
   /** 展示加载动画 */
   infiniteLoading = () => {
-    this.loading();
-  };
-
-  loading() {
-    const { progress } = this.state;
-    /** 执行动画时间 0.4 秒 */
-    Animated.timing(this.state.progress, {
+    this.state.progress.setValue(0)
+    this._loop = Animated.loop(Animated.timing(this.state.progress,{
       toValue: 1,
       duration: 800,
       useNativeDriver: true
-    }).start(() => {
-      if (!this.state.toFinished) {
-        progress.setValue(0);
-        this.loading();
-      } else if (this.state.toFinished) {
-        this.setState({
-          text: '刷新成功'
-        })
-        this.state.toFinished = false;
-        this.state.waitTimer = setTimeout(() => {
-          this.state.continuousRefresh = true;
-          this.props.ptrScrollFinished && this.props.ptrScrollFinished();
-          clearInterval(this.state.waitTimer);
-          this.state.waitTimer = null;
-        }, 600);
-      }
-    });
-  }
+    }))
+    this._loop.start()
+  };
   render() {
     return (
       <View>
@@ -206,20 +208,23 @@ export default class PTRScrollList extends Component {
   _headerRefreshDone = (animated = true) => {
     this._setGestureStatus(G_STATUS_NONE);
     this._headerRefreshInstance.setRefreshStatus(G_STATUS_NONE, -this._originContentInset.top);
-    //delay setState for animated perform
-    setTimeout(() => {
-      this.setState({
-        contentInset: this._originContentInset
-      });
-    },0);
     this._currentOffsetY < 0 && this._scrollToPos(-this._originContentInset.top, animated);
     this._footerMoreData = true;
     this._updateFooterVisible();
+    //delay setState for animated perform
+    let setContentInsetFunc = ()=>{
+      this.setState({
+        contentInset: this._originContentInset
+      });
+    } 
+    animated ? setTimeout(() => {
+      setContentInsetFunc()
+    }, 10):setContentInsetFunc()
   };
   // 刷新结束
   ptr_headerRefreshFinished = (animated = true) => {
     if (this.state.gestureStatus !== G_STATUS_HEADER_REFRESHING) return
-    if (animated == false) this._headerRefreshDone(animated);
+    if (animated == false) {this._headerRefreshDone(animated);this._headerRefreshInstance._lottieInstance.hc_resetStatus && this._headerRefreshInstance._lottieInstance.hc_resetStatus();}
     else this._headerRefreshInstance._lottieInstance.hc_refreshFinished && this._headerRefreshInstance._lottieInstance.hc_refreshFinished();
   };
   ptr_footerRefershFinished = moreData => {
