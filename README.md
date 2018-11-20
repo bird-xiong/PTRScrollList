@@ -105,10 +105,7 @@ class FooterComponent extends Component {
 #### Android 的手势事件冲突
 ##### 下拉事件的处理在Android上面实现起来比iOS上困难的多，不仅仅是因为Android不支持scrollview的弹性效果，而是在用手势处理时，你会发现目前RN的线程模型无法处理原生控件的手势事件（scrollview）和自定义的手势事件之间的冲突，这个是一个框架上的瓶颈问题，据说在RN的重构版中会解决这类问题。<br>
 ##### 这个其实很好理解，事件在传递链中必须选择截获当前事件或者传递当前事件，当scrollview的手势事件和自定义的手势事件同时存在时，我们也希望能按这种标准处理，但是很显让因为js线程是异步的，scrollview的手势不会等待底层视图的事件拦截器的处理结果，在RN的生态体系中，你会发现scrollview的事件总是优先级高的，并且你无法改变它。<br>
-![传递链](https://raw.githubusercontent.com/bird-xiong/PTRScrollList/master/res/mmexport1540897253921.jpg)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-![实际情况](https://raw.githubusercontent.com/bird-xiong/PTRScrollList/master/res/mmexport1540897250490.jpg)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*我们希望是这样 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 实际上是这样*
+![传递链](https://raw.githubusercontent.com/bird-xiong/PTRScrollList/master/res/zenuml.png)
 ##### 所以在PTRScrollList中做一个比较取巧的方法，通过禁用scrollview的滚动来使得我们可以截获整个手势事件流，才能控制头部组件的下拉状态。<br>
 
 
