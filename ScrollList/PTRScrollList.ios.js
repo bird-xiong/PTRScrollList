@@ -166,6 +166,7 @@ export default class PTRScrollList extends Component {
   _footerMoreData = true;
   _ptrHeight = 1;
   _originContentInset = null;
+  _scrollEventThrottle = 0;
 
   static propTypes = {
     scrollComponent: PropTypes.oneOf(["ScrollView", "ListView", "FlatList", "VirtualizedList"]).isRequired,
@@ -191,6 +192,7 @@ export default class PTRScrollList extends Component {
       footerStatus: G_STATUS_FOOTER_NONE,
       contentInset: props.contentInset ? props.contentInset : { top: 0, right: 0, bottom: 0, left: 0 }
     };
+    this._scrollEventThrottle = props.scrollEventThrottle || 1;
     this._originContentInset = props.contentInset ? props.contentInset : this.state.contentInset;
     props.getInstance instanceof Function && props.getInstance(this);
   }
@@ -255,6 +257,13 @@ export default class PTRScrollList extends Component {
         break;
     }
   };
+  _updateScrollEventThrottle = y => {
+    if (this.props.scrollEventThrottle) return
+    let scrollEventThrottle = y >=0 ? 1: 0
+    if (scrollEventThrottle === this._scrollEventThrottle) return
+    this._scrollInstance.setNativeProps({scrollEventThrottle})
+    this._scrollEventThrottle = scrollEventThrottle
+  }
   /**
    * 页面滚动函数，根据页面的滚动 距离，执行相对应的方法
    */
@@ -269,6 +278,7 @@ export default class PTRScrollList extends Component {
         else this._setGestureStatus(G_STATUS_PULLING_DOWN);
       }
       this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, y);
+      this._updateScrollEventThrottle(y)
     }
   };
 
@@ -295,6 +305,7 @@ export default class PTRScrollList extends Component {
         }
       }
       this._headerRefreshInstance.setRefreshStatus(this.state.gestureStatus, y);
+      this._updateScrollEventThrottle(y)
     }
     this.props.onScrollEndDrag && this.props.onScrollEndDrag(e);
   };
@@ -315,6 +326,11 @@ export default class PTRScrollList extends Component {
     // this.onEndReachedCalledDuringMomentum = false;
     this.props.onMomentumScrollBegin && this.props.onMomentumScrollBegin(e);
   };
+  onMomentumScrollEnd = e => {
+    let y = e.nativeEvent.contentOffset.y * -1
+    this._updateScrollEventThrottle(y)
+    this.props.onMomentumScrollEnd && this.props.onMomentumScrollEnd(e);
+  }
   onScrollBeginDrag = e => {
     this.onEndReachedCalledDuringMomentum = false;
     this.props.onScrollBeginDrag && this.props.onScrollBeginDrag(e);
@@ -384,10 +400,8 @@ export default class PTRScrollList extends Component {
               this._scrollInstance = ref;
               this.props.getRef instanceof Function && this.props.getRef(ref);
             },
-            scrollEventThrottle: this.props.scrollEventThrottle || 16,
+            scrollEventThrottle: this._scrollEventThrottle,
             contentContainerStyle: this.props.contentContainerStyle || { backgroundColor: "#ffffff" },
-            onTouchStart: this.onTouchStart,
-            onTouchMove: this.onTouchMove,
             onScroll: this.onScroll,
             onLayout: this.onLayout,
             onContentSizeChange: this.onContentSizeChange,

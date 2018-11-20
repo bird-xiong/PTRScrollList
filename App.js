@@ -26,8 +26,8 @@ export default class App extends Component {
         this.setState({
             data: this._generateData(0),
             // enableFooterInfinite: false
-        })
-        this.ptrScrollList.ptr_headerRefreshFinished()
+        },()=> this.ptrScrollList.ptr_headerRefreshFinished())
+       
       }, 2000)
   }
   _onFooterRefreshing = () =>{
@@ -38,8 +38,8 @@ export default class App extends Component {
         this.setState({
             data: more,
             // enableHeaderRefresh: false
-        })
-        this.ptrScrollList.ptr_footerRefershFinished(true)
+        },()=>this.ptrScrollList.ptr_footerRefershFinished(true))
+        
       }, 2000)
   }
   _generateData = (index) =>{
