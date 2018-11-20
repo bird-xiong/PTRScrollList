@@ -59,7 +59,7 @@
 #### API
 1. 头部刷新成功
 > ```this.ptrScrollList.ptr_headerRefreshFinished()```
-##### *参数可缺省，传入false时可重置当前列表刷新状态*
+##### *参数可缺省，传入false时可重置当前列表刷新状态（如果falist渲染开销大的话，在setState回调中调用有助于提升性能）*
 
 2. 底部刷新成功
 > ```this.ptrScrollList.ptr_footerRefershFinished()```
