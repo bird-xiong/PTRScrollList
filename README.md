@@ -69,7 +69,7 @@ _支持 ios&Android 平台_
 
 > TIMER_DELAY_REFRESH_SUCCESS
 
- 刷新成功后顶部停留时间，默认 1 秒
+刷新成功后顶部停留时间，默认 1 秒
 
 > G_PULL_DOWN_DISTANCE
 
